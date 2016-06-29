@@ -32,16 +32,15 @@ A quick summary of how `redo` works.
 
 1. The command `redo target` does the following:
 
-- If `target` exists and nothing is known about its dependencies, `redo` assumes that the file is up to date and nothing is done.
+    - If `target` exists and nothing is known about its dependencies, `redo` assumes that the file is up-to-date and nothing is done.
 
-- If the dependencies of `target` are known (because `redo` has been called on ot previously) or if `target` does not exist,
-the build script for `target` is executed. This is usually `target.do` but see the `redo` man page for the complete details.
+    - If the dependencies of `target` are known (because `redo` has been called on it previously) or if `target` does not exist, the build script for `target` is executed. This is usually `target.do` but see the `redo` man page for the complete details.
 
 2. As the build script for `target` is executed, calls to `redo` or `redo-ifchange` will set the dependencies for `target` in
 addition to rebuilding `target`. Usually the dependencies for a build target are static, but this process allows the
-dependencies to change over time.
+dependencies to change over time. Thus the dependencies for a target are re-determined every time the target is rebuilt.
 
-3. The equivalent to `make target` is `redo-ifchange target`. Running `redo target` will always execute the build script for `target`.
+3. The equivalent to `make target` is `redo-ifchange target`. Running `redo target` will always execute the build script for `target` (modulo what was stated above in #1.)
 
 The archetypal example is a build script for a .o file from a .c file:
 
@@ -55,5 +54,5 @@ The archetypal example is a build script for a .o file from a .c file:
 Note that the rebuild steps for the .h files are unlikely to happen in practice
 if the .c and .h files are static files (i.e. not dynamically generated.)
 
-
-
+Note that if a target's dependencies change, they do not take effect until the next
+time an up-to-date check is made for the target.
