@@ -1,0 +1,46 @@
+#!/usr/bin/env runhaskell
+
+--
+-- Display the unique packages from an index.tar.gz file
+--
+-- Usage:  extract-package-names index.tar.gz
+--
+
+import qualified Data.ByteString.Lazy as LBS
+import qualified Codec.Archive.Tar as Tar
+import           Codec.Archive.Tar (Entries(..))
+import           Codec.Archive.Tar.Entry (Entry(..), fromTarPath, EpochTime)
+import qualified Codec.Compression.GZip as GZip
+import Control.Monad
+import System.FilePath
+import Control.Monad.IO.Class
+import Control.Monad.State
+import System.Environment
+
+isCabal path = takeExtension path == ".cabal"
+
+forEntries ::MonadIO m =>  Entries e -> (Entry -> m ()) -> m (Either e ())
+forEntries (Next entry next) action = action entry >> forEntries next action
+forEntries Done              action = return (Right ())
+forEntries (Fail e)          action = return (Left e)
+
+main = do
+  (arg : _) <- getArgs
+  entries <- fmap (Tar.read . GZip.decompress) (LBS.readFile arg)
+
+  let doit :: StateT (String, EpochTime) IO ()
+      doit = do
+        void $ forEntries entries $ \e -> do
+          let path = fromTarPath (entryTarPath e)
+              pkg = takeWhile (/= '/') path
+              time = entryTime e
+          when (isCabal path) $ do
+            (last_pkg, last_time) <- get
+            when (last_pkg /= pkg) $ do
+              when (last_pkg /= "") $ liftIO $ putStrLn $ last_pkg -- show last_time ++ " " ++ last_pkg
+            put (pkg, time)
+    -- putStrLn $ show (entryTime e) ++ "    " ++ (fromTarPath $ entryTarPath e)
+
+  (last_pkg, last_time) <- execStateT doit ("", 0)
+  putStrLn $ last_pkg -- show last_time ++ " " ++ last_pkg
+

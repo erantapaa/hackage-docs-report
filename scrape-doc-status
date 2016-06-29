@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+
+import sqlite3 
+import sys
+import hackage
+
+SCHEMA = """
+create table if not exists doc_status (
+  package  text,
+  version  text,
+  upload_time datetime,
+  status  text,
+  primary key (package, version)
+);
+"""
+
+def create_schema(conn):
+  cur = conn.cursor()
+  cur.execute(SCHEMA)
+  conn.commit()
+
+def status_exists(conn, p):
+  cur = conn.cursor()
+  cur.execute("SELECT 1 fROM doc_status where package = ?", (p,))
+  row = cur.fetchone()
+  return row != None
+
+def status_exists_pv(conn, p, v):
+  cur = conn.cursor()
+  cur.execute("SELECT 1 fROM doc_status where package = ? and version = ?", (p,v))
+  row = cur.fetchone()
+  return row != None
+
+def insert_status(conn, d):
+  cur = conn.cursor()
+  try:
+    cur.execute("INSERT INTO doc_status VALUES (?,?,?,?)", (d['package'], d['version'], d['upload_time'], d['status']))
+    conn.commit()
+  except sqlite3.Error, e:
+    conn.rollback()
+    print "error:", e
+
+def test1():
+  conn = sqlite3.connect("foo.db")
+  create_schema(conn)
+  d = { "package":"asd", "version":"1.2.3.4", "upload_time": 1234, "status": "the status" }
+  insert_status(conn, d)
+  insert_status(conn, d)
+  insert_status(conn, d)
+  print status_exists(conn, "asd", "1.2.3.4")
+  print status_exists(conn, "asd", "1.2.3.5")
+
+def process(conn, pkg):
+  (v, t, st) = hackage.scrape_doc_status(pkg)
+  d = { "package":pkg, "version":v, "upload_time":t, "status": st }
+  insert_status(conn, d)
+
+def main():
+  dbpath = sys.argv[1]
+  conn = sqlite3.connect(dbpath)
+  create_schema(conn)
+  count = 0
+  processed = 0
+  for pkg in sys.argv[2:]:
+    count += 1
+    if not status_exists(conn, pkg):
+      processed += 1
+      process(conn, pkg)
+  print "rows processed:", processed, "/", count
+
+main()
+

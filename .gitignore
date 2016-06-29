@@ -1,0 +1,9 @@
+.redo
+*.pyc
+index.tar.gz
+all-packages
+docstatus.db
+report.json
+report.timestamp
+html/report.json
+

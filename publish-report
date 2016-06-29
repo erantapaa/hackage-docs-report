@@ -1,0 +1,6 @@
+#!/bin/sh
+#
+# Publish the report to my web site.
+
+scp html/* report.json amion:www-root/doc-status-report
+

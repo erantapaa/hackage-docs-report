@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/bin/rm index.tar.gz all-packages docstatus.db report.json
+

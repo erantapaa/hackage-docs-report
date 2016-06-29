@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+import sqlite3
+import json
+import sys
+import os
+import time
+
+
+def emit_row(r):
+  # print "<tr><td>", r["upload_time"], "</td><td>", r["package"], "</td><td>", r["version"], "</td></tr>"
+  print "<tr><td>{upload_time}</td><td><a href=\"http://hackage.haskell.org/package/{package}-{version}\">{package}-{version}</a></td></tr>".format(**r)
+
+def gen_table(rows):
+  for r in rows:
+    emit_row(r)
+
+def main():
+  dbpath = sys.argv[1]
+
+  # get last modified time of report.timestamp
+  created_time = time.ctime(os.path.getmtime("report.timestamp"))
+
+  data = { "created_time": created_time }
+  rows = []
+
+  conn = sqlite3.connect(dbpath)
+  conn.row_factory = sqlite3.Row
+  c = conn.cursor()
+  c.execute("SELECT * FROM doc_status WHERE status LIKE 'Docs pending%' order by upload_time desc")
+  rows = [ dict(r) for r in c.fetchall() ]
+  data["rows"] = rows
+  print json.dumps(data)
+
+main()
+
