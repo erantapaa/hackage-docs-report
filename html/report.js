@@ -29,7 +29,7 @@ function build_content(data) {
   console.log("first row:", rows[0])
   console.log("row count: " + rows.length)
   var trs = []
-  trs.push("<tr><th></th><th>Uploaded</th><th>Package</th><th>Prev Upload Time</th><th>Prev Version</th><th>Prev Status</th></tr>")
+  trs.push("<tr><th></th><th>Uploaded</th><th>Package</th><th>Version</th><th>Prev Upload Time</th><th>Prev Version</th><th>Prev Status</th></tr>")
   var fields = "upload_time package version last_version last_upload_time last_status".split(" ")
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i]
@@ -51,7 +51,8 @@ function build_content(data) {
     }
     var cols = [ '<td class=counter>' + (i+1) + '</td>'
                , td_( t0 )
-               , td_( atag + p + '</a>' )
+               , td_(  p  )
+               , td_( atag + r['version'] + '</a>' )
                , td_( t1 )
                , td_( lvers )
                , td_( lst  )
@@ -61,7 +62,7 @@ function build_content(data) {
   }
   var joined = trs.join("")
   $("#tbl").html(joined)
-  $("#preface").html("Report created at " + created_time)
+  $("#preface").html("Report created on " + created_time)
 }
 
 $(document).ready(init)
