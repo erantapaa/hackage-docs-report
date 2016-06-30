@@ -1,4 +1,6 @@
 #!/bin/sh
 
-curl 'https://hackage.haskell.org/packages/index.tar.gz'
+exec >&2
+echo Downloading index.tar.gz
+curl 'https://hackage.haskell.org/packages/index.tar.gz' > $3
 

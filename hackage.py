@@ -6,6 +6,12 @@ import requests
 import time
 from dateutil.parser import parse
 import datetime
+from collections import namedtuple
+
+Package = namedtuple('Package', 'package version all_versions upload_time doc_status')
+
+def warn(msg):
+  sys.stderr.write(msg + "\n")
 
 def parse_ths(html):
   ths = {}
@@ -23,22 +29,46 @@ def match(pat, text):
 def text_content(html):
   return re.sub("<.*?>", " ", html)
 
-def parse_page(html):
-  # look for <th>Versions</th><td>...</td>
+def parse_page(html, pkg, url):
+  if (not re.search('<table class="properties"', html)):
+    return None
+  # Returns a Package named tuple with parsed fields
   ths = parse_ths(html)
-  vers_td = ths['Versions']
-  version = match("<strong>(.*?)<.strong>", vers_td)
-  when = match("(\S+\s+\S+\s+\d+\s+\d+:\d+:\d+\s+\S+\s+\d+)", ths['Uploaded'])
-  status = text_content(ths['Status'])
+  if 'Versions' in ths:
+    vers_td = ths['Versions']
+    version = match("<strong>(.*?)<.strong>", vers_td)
+    all_versions = [ v.group(0) for v in re.finditer('(\d[\d\.]+)', vers_td) ]
+    # warn("=== vers_td: {}".format(vers_td))
+  else:
+    warn("url {} does not have section Versions".format(url))
+    all_versions = []
+    version = "unknown"
+
+  if 'Uploaded' in ths:
+    when = match("(\S+\s+\S+\s+\d+\s+\d+:\d+:\d+\s+\S+\s+\d+)", ths['Uploaded'])
+  else:
+    warn("url {} does not have section Uploaded".format(url))
+    when = None
+  
+  if 'Status' in ths:
+    status = text_content(ths['Status'])
+  else:
+    warn("url {} does not have section Status".format(url))
+    status = ""
 
   t = parse(when)
   t = t.replace(tzinfo = None)
 
-  return (version, t, status)
+  return Package (package=pkg, all_versions=all_versions, version=version, upload_time=t, doc_status = status)
 
-def scrape_doc_status(pkg):
+def scrape_doc_status(pkg, version = None):
   """Return the version, upload time and doc status string for a package."""
-  url = "http://hackage.haskell.org/package/" + pkg
+  if version:
+    leaf = pkg + "-" + version
+  else:
+    leaf = pkg
+  url = "http://hackage.haskell.org/package/" + leaf
   r = requests.get(url)
-  return parse_page(r.text)
+  p =  parse_page( r.text, pkg, url )
+  return p
 

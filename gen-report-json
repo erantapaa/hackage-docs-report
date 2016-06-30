@@ -6,6 +6,9 @@ import sys
 import os
 import time
 
+QUERY = """
+select a.package, a.version, a.upload_time, b.version as last_version, b.upload_time as last_upload_time, b.status as last_status from doc_status a left join latest_docs b on b.package = a.package where a.status like 'Docs pending%' order by a.upload_time desc;
+"""
 
 def emit_row(r):
   # print "<tr><td>", r["upload_time"], "</td><td>", r["package"], "</td><td>", r["version"], "</td></tr>"
@@ -27,7 +30,7 @@ def main():
   conn = sqlite3.connect(dbpath)
   conn.row_factory = sqlite3.Row
   c = conn.cursor()
-  c.execute("SELECT * FROM doc_status WHERE status LIKE 'Docs pending%' order by upload_time desc")
+  c.execute(QUERY)
   rows = [ dict(r) for r in c.fetchall() ]
   data["rows"] = rows
   print json.dumps(data)

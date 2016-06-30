@@ -1,4 +1,4 @@
 #!/bin/sh
 
-/bin/rm index.tar.gz all-packages docstatus.db report.json
+/bin/rm -f index.tar.gz all-packages docstatus.db report.json
 

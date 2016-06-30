@@ -1,5 +1,7 @@
 #!/bin/sh
 
+exec >&2
 redo-ifchange index.tar.gz
-./extract-package-names index.tar.gz
+echo Extracting package names
+./extract-package-names index.tar.gz > $3
 

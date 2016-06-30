@@ -3,8 +3,9 @@
 import sqlite3 
 import sys
 import hackage
+import re
 
-SCHEMA = """
+SCHEMA1 = """
 create table if not exists doc_status (
   package  text,
   version  text,
@@ -14,9 +15,32 @@ create table if not exists doc_status (
 );
 """
 
+SCHEMA2 = """
+create table if not exists latest_docs (
+  package text,
+  version text,
+  upload_time datetime,
+  status text,
+  primary key (package)
+)
+"""
+
+def info(msg):
+  sys.stderr.write("INFO: " + msg + "\n")
+
+def execute_sql(conn, sql, vals):
+  try:
+    cur = conn.cursor()
+    cur.execute(sql, vals)
+    conn.commit()
+  except sqlite3.Error, e:
+    conn.rollback()
+    sys.stderr.write("error: " + str(e) + "\n")
+
 def create_schema(conn):
   cur = conn.cursor()
-  cur.execute(SCHEMA)
+  cur.execute(SCHEMA1)
+  cur.execute(SCHEMA2)
   conn.commit()
 
 def status_exists(conn, p):
@@ -31,14 +55,11 @@ def status_exists_pv(conn, p, v):
   row = cur.fetchone()
   return row != None
 
-def insert_status(conn, d):
-  cur = conn.cursor()
-  try:
-    cur.execute("INSERT INTO doc_status VALUES (?,?,?,?)", (d['package'], d['version'], d['upload_time'], d['status']))
-    conn.commit()
-  except sqlite3.Error, e:
-    conn.rollback()
-    print "error:", e
+def insert_latest(conn, p):
+  execute_sql(conn, "INSERT INTO latest_docs values (?,?,?,?)", (p.package, p.version, p.upload_time, p.doc_status))
+
+def insert_status(conn, p):
+  execute_sql(conn, "INSERT INTO doc_status VALUES (?,?,?,?)", (p.package, p.version, p.upload_time, p.doc_status))
 
 def test1():
   conn = sqlite3.connect("foo.db")
@@ -51,9 +72,24 @@ def test1():
   print status_exists(conn, "asd", "1.2.3.5")
 
 def process(conn, pkg):
-  (v, t, st) = hackage.scrape_doc_status(pkg)
-  d = { "package":pkg, "version":v, "upload_time":t, "status": st }
-  insert_status(conn, d)
+  p = hackage.scrape_doc_status(pkg)
+  insert_status(conn, p)
+  # find the latest version which has docs
+  all_versions = p.all_versions
+  i = len(all_versions) - 1
+  found = None
+  # info("all_versions: {}".format(all_versions))
+  while i >= 0:
+    if p and not re.search("Docs pending ", p.doc_status):
+      found = p
+      break
+    i = i - 1
+    if i < 0: break
+    v = all_versions[i]
+    # info("trying version {}".format(v))
+    p = hackage.scrape_doc_status(pkg, version = v)
+  if found:
+    insert_latest(conn, found)
 
 def main():
   dbpath = sys.argv[1]
@@ -66,7 +102,7 @@ def main():
     if not status_exists(conn, pkg):
       processed += 1
       process(conn, pkg)
-  print "rows processed:", processed, "/", count
+  sys.stderr.write("rows processed: {} / {}\n".format(processed, count))
 
 main()
 
